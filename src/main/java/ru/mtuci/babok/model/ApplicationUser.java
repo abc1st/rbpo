@@ -18,12 +18,15 @@ public class ApplicationUser {
 
     @Id
     @GeneratedValue
-    private UUID id;
+    private Long id;
 
-    private String username;
+    @Column(unique = true)
+    private String login;
+
     private String password;
+
+    @Column(unique = true)
     private String email;
 
-    @Enumerated(EnumType.STRING)
     private ApplicationRole role;
 }

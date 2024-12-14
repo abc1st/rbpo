@@ -5,9 +5,9 @@ import org.springframework.stereotype.Repository;
 import ru.mtuci.babok.model.ApplicationUser;
 
 import java.util.Optional;
-import java.util.UUID;
+
 
 @Repository
-public interface UserRepository extends JpaRepository<ApplicationUser, UUID> {
-    Optional<ApplicationUser> findByEmail(String email);
+public interface UserRepository extends JpaRepository<ApplicationUser, Long> {
+    Optional<ApplicationUser> findByLogin(String login);
 }

@@ -1,4 +1,4 @@
-package ru.mtuci.babok.model;
+package ru.mtuci.babok.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class AuthenticationRequest {
-    private String email;
+    private String login;
     private String password;
 }

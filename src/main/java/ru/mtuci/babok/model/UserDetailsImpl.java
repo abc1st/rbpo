@@ -36,7 +36,7 @@ public class UserDetailsImpl implements UserDetails {
 
     public static UserDetails fromApplicationUser(ApplicationUser user) {
         return new User(
-                user.getEmail(),
+                user.getLogin(),
                 user.getPassword(),
                 user.getRole().getGrantedAuthorities()
         );
