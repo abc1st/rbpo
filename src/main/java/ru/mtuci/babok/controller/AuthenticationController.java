@@ -26,6 +26,7 @@ public class AuthenticationController {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
 
+    @PostMapping
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request) {
         try {
             String login = request.getLogin();
