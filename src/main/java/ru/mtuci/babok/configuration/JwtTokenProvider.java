@@ -35,7 +35,6 @@ public class JwtTokenProvider {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    //TODO: реализовать методы создания, валидации и получения информации из JWT токена
     public String createToken(String username, Set<GrantedAuthority> authorities) {
         Claims claims = Jwts.claims().setSubject(username);
         claims.put("auth", authorities.stream()
@@ -56,11 +55,9 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
+            Jwts.parser()
                     .setSigningKey(getSigningKey())
-                    .build()
                     .parseClaimsJws(token);
-
             return true;
         } catch (Exception e) {
             return false;
@@ -69,30 +66,17 @@ public class JwtTokenProvider {
     }
 
     public String getUsername(String token) {
-        System.out.println(getAuthorities(token));
-        return Jwts.parserBuilder()
+        return Jwts.parser()
                 .setSigningKey(getSigningKey())
-                .build()
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
 
     }
 
-    public Set<GrantedAuthority> getAuthorities(String token) {
-        return ((Collection<?>) Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .get("auth", Collection.class)).stream()
-                .map(authority -> new SimpleGrantedAuthority((String) authority))
-                .collect(Collectors.toSet());
-    }
-
     public Authentication getAuthentication(String token) {
-        String username = getUsername(token);
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        String login = getUsername(token);
+        UserDetails user = userDetailsService.loadUserByUsername(login);
+        return new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
     }
 }
