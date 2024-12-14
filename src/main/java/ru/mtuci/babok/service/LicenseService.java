@@ -7,7 +7,10 @@ import java.util.List;
 
 public interface LicenseService {
     LicenseActivate createLicense(
-        Long CreatorId, int device_count
+        Long CreatorId,
+        int device_count,
+        String current_device,
+        Integer lifeTime
         );
 
     LicenseActivate save(LicenseRequest request);
