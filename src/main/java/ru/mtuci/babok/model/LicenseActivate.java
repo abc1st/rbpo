@@ -1,10 +1,7 @@
 package ru.mtuci.babok.model;
 
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -22,7 +19,17 @@ public class LicenseActivate {
 
     private LocalDateTime activation_date, end_date;
     private boolean is_active;
-    private int current_device;
-    private int max_devices;
+    private String current_device;
+    private Integer device_count;
+    private Integer max_devices;
     private String activation_code;
+    private Integer lifeTime;
+
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.MERGE)
+    @JoinColumn(name = "userId")
+    private ApplicationUser user;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @JoinColumn(name = "CreatorId")
+    private ApplicationUser CreatorId;
 }
