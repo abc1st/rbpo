@@ -5,12 +5,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import ru.mtuci.babok.model.LicenseActivate;
 import ru.mtuci.babok.repository.LicenseActivateRepository;
+import ru.mtuci.babok.service.LicenseService;
 
 import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
-public class LicenseServiceImpl {
+public class LicenseServiceImpl implements LicenseService {
     private final LicenseActivateRepository licenseActivateRepository;
 
     private String generateLicenseCode(Long CreatorId, Integer device_count, String current_device)

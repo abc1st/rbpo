@@ -13,9 +13,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("*admin/license")
+@RequestMapping("admin/license")
 @RequiredArgsConstructor
-@PreAuthorize("*hasRole('ADMIN')")
+@PreAuthorize("hasRole('ADMIN')")
 public class LicenseController {
     private final LicenseServiceImpl licenseService;
 

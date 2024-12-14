@@ -24,8 +24,10 @@ public class LicenseCreateController {
     {
         LicenseActivate licenseActivate = licenseService.createLicense(
                 licenseCreateRequest.getCreatorId(),
-                licenseCreateRequest.getDevice_count()
+                licenseCreateRequest.getDevice_count(),
+                licenseCreateRequest.getCurrent_device(),
+                licenseCreateRequest.getlifeTime()
         );
-        return
+        return ResponseEntity.ok(licenseActivate);
     }
 }
