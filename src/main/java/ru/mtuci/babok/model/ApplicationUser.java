@@ -6,27 +6,38 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.UUID;
+import java.util.List;
 
 @Entity
-@Table(name = "users")
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@Table(name = "Users")
 public class ApplicationUser {
-
-    @Id
     @GeneratedValue
+    @Id
     private Long id;
 
     @Column(unique = true)
     private String login;
 
-    private String password;
+    private String password_hash;
 
     @Column(unique = true)
     private String email;
 
     private ApplicationRole role;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "owner")
+    private List<License> licenses_owner;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
+    private List<License> licenses_user;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
+    private List<LicenseHistory> licenseHistories;
+
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user")
+    private List<Device> devices;
 }
