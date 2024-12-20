@@ -228,15 +228,17 @@ public class LicenseServiceImpl implements LicenseService {
             throw new IllegalStateException("Устройство уже имеет активацию для этой лицензии");
         }
 
-        // Создание новой связи
         DeviceLicense deviceLicense = new DeviceLicense();
         deviceLicense.setDevice(device);
         deviceLicense.setLicense(license);
-        deviceLicense.setActivation_date(new Date(System.currentTimeMillis()));
+        deviceLicense.setActivation_date(getCurrentSecureDate());
 
         deviceLicenseService.saveDeviceLicense(deviceLicense);
     }
-
+    // Защита даты активации
+    private Date getCurrentSecureDate() {
+        return new Date(System.currentTimeMillis());
+    }
     @Override
     public void updateLicense(License license) {
         // Обновление даты первой активации, если еще не установлена
