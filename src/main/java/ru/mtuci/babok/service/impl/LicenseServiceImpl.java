@@ -118,13 +118,13 @@ public class LicenseServiceImpl implements LicenseService {
     private String buildLicenseDescription(License license) {
         SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");
         return String.format(
-                "Лицензия:\n" +
-                "- Продукт: %s\n" +
-                "- Тип: %s\n"+
-                "- Владелец: %s\n" +
-                "- Количество устройств: %d\n" +
-                "- Создана: %s\n" +
-                "- Действует до: %s\n" + "- Длительность: %d сек",
+                "Лицензия:" +
+                "- Продукт: %s" +
+                "- Тип: %s"+
+                "- Владелец: %s" +
+                "- Количество устройств: %d" +
+                "- Создана: %s" +
+                "- Действует до: %s" + "- Длительность: %d сек",
                 license.getProduct().getName(),
                 license.getLicenseType().getName(),
                 license.getOwner().getLogin(),
