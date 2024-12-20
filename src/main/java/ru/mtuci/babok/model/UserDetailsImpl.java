@@ -1,28 +1,26 @@
 package ru.mtuci.babok.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Set;
+import java.util.List;
 
 @Data
+@AllArgsConstructor
 public class UserDetailsImpl implements UserDetails {
-    private String username;
-    private String password;
-    private Set<GrantedAuthority> authorities;
-    private boolean isActive;
+    private final String username;
+    private final String password;
+    private List<GrantedAuthority> authorities;
+    private final  boolean isActive;
 
     @Override
-    public boolean isAccountNonExpired() {
-        return isActive;
-    }
+    public boolean isAccountNonExpired() { return isActive; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return isActive;
-    }
+    public boolean isAccountNonLocked() { return isActive; }
 
     @Override
     public boolean isCredentialsNonExpired() {
@@ -30,15 +28,13 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     @Override
-    public boolean isEnabled() {
-        return isActive;
-    }
+    public boolean isEnabled() { return isActive; }
 
-    public static UserDetails fromApplicationUser(ApplicationUser user) {
+     public static UserDetails fromApplicationUser(ApplicationUser user) {
         return new User(
                 user.getLogin(),
-                user.getPassword(),
+                user.getPassword_hash(),
                 user.getRole().getGrantedAuthorities()
         );
-    }
+     }
 }
