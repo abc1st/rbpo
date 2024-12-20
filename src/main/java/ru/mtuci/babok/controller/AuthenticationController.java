@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+
 @RestController
 @RequestMapping("/auth/login")
 @RequiredArgsConstructor
@@ -25,7 +29,6 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
-
     @PostMapping
     public ResponseEntity<?> login(@RequestBody AuthenticationRequest request) {
         try {
