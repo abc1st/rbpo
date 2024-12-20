@@ -1,29 +1,80 @@
 package ru.mtuci.babok.controller;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import org.hibernate.annotations.ManyToAny;
-import ru.mtuci.babok.model.ApplicationUser;
+import ru.mtuci.babok.model.License;
+import ru.mtuci.babok.request.DataLicenseRequest;
 import ru.mtuci.babok.service.impl.LicenseServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("admin/license")
+@RequestMapping("/manage/license")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class LicenseController {
     private final LicenseServiceImpl licenseService;
 
-    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.MERGE)
-    @JoinColumn(name = "userId")
-    private ApplicationUser user;
+    @PostMapping
+    public ResponseEntity<?> save(@RequestBody DataLicenseRequest request) {
+        try {
+            License license = licenseService.save(request);
+            request.setId(license.getId());
+            return ResponseEntity.ok(request);
+        }
+        catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
-    @JoinColumn(name = "CreatorId")
-    private ApplicationUser creator;
+    @GetMapping
+    public ResponseEntity<?> getAll() {
+        try {
+            List<License> licenses = licenseService.getAll();
+            List<DataLicenseRequest> data = licenses.stream().map(
+                    license -> new DataLicenseRequest(
+                            license.getId(),
+                            license.getLicenseType().getId(),
+                            license.getProduct().getId(),
+                            license.getUser() != null ? license.getUser().getId() : null,
+                            license.getOwner().getId(),
+                            license.getFirst_activation_date(),
+                            license.getEnding_date(),
+                            license.isBlocked(),
+                            license.getDevice_count(),
+                            license.getDuration(),
+                            license.getCode(),
+                            license.getDescription()
+                    )
+            ).toList();
+            return ResponseEntity.ok(data);
+        }
+        catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping
+    public ResponseEntity<?> update(@RequestBody DataLicenseRequest request) {
+        try {
+            licenseService.update(request);
+            return ResponseEntity.ok(request);
+        }
+        catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @DeleteMapping
+    public ResponseEntity<?> delete(@RequestParam Long id) {
+        try {
+            licenseService.delete(id);
+            return ResponseEntity.ok("Лицензия удалена");
+        }
+        catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
