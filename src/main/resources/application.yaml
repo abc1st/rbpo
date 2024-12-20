@@ -1,6 +1,4 @@
 spring:
-  server:
-    port: 8081
   application:
     name: rbpo_babok
   datasource:
