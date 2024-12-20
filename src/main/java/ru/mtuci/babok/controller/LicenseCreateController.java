@@ -1,5 +1,9 @@
 package ru.mtuci.babok.controller;
 
+import ru.mtuci.babok.model.License;
+import ru.mtuci.babok.request.DataLicenseRequest;
+import ru.mtuci.babok.request.LicenseCreateRequest;
+import ru.mtuci.babok.service.impl.LicenseServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -7,27 +11,40 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import ru.mtuci.babok.model.LicenseActivate;
-import ru.mtuci.babok.request.LicenseCreateRequest;
-import ru.mtuci.babok.request.LicenseRequest;
-import ru.mtuci.babok.service.impl.LicenseServiceImpl;
 
 @RestController
-@RequestMapping("/admin/licenseCreate")
+@RequestMapping("/licenseCreate")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class LicenseCreateController {
     private final LicenseServiceImpl licenseService;
 
     @PostMapping
-    public ResponseEntity<?> LicenseCreate(@RequestBody LicenseCreateRequest licenseCreateRequest)
-    {
-        LicenseActivate licenseActivate = licenseService.createLicense(
-                licenseCreateRequest.getCreatorId(),
-                licenseCreateRequest.getDevice_count(),
-                licenseCreateRequest.getCurrent_device(),
-                licenseCreateRequest.getlifeTime()
-        );
-        return ResponseEntity.ok(licenseActivate);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createLicense(@RequestBody LicenseCreateRequest licenseCreateRequest) {
+        try {
+            License license = licenseService.createLicense(
+                    licenseCreateRequest.getProductId(),
+                    licenseCreateRequest.getOwnerId(),
+                    licenseCreateRequest.getLicenseTypeId(),
+                    licenseCreateRequest.getDevice_count(),
+                    licenseCreateRequest.getDuration());
+
+            return ResponseEntity.ok(new DataLicenseRequest(
+                    license.getId(),
+                    license.getLicenseType().getId(),
+                    license.getProduct().getId(),
+                    null,
+                    license.getOwner().getId(),
+                    license.getFirst_activation_date(),
+                    license.getEnding_date(),
+                    license.isBlocked(),
+                    license.getDevice_count(),
+                    license.getDuration(),
+                    license.getCode(),
+                    license.getDescription()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(String.format("Ошибка(%s)", e.getMessage()));
+        }
     }
 }
