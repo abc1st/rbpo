@@ -3,6 +3,7 @@ package ru.mtuci.babok.controller;
 import ru.mtuci.babok.configuration.JwtTokenProvider;
 import ru.mtuci.babok.exceptions.categories.DeviceNotFoundException;
 import ru.mtuci.babok.exceptions.categories.UserNotFoundException;
+import ru.mtuci.babok.exceptions.categories.License.LicenseNotFoundException;
 import ru.mtuci.babok.model.ApplicationUser;
 import ru.mtuci.babok.model.Device;
 import ru.mtuci.babok.model.License;
@@ -40,10 +41,20 @@ public class LicenseInfoController {
                     () -> new DeviceNotFoundException("Устройство не найдено")
             );
 
-            List<License> licenses = licenseService.getActiveLicensesForDevice(device, user);
-            List<Ticket> tickets = licenses.stream().map(license -> licenseService.generateTicket(license, device, "Информация о лицензии на текущее устройство")).toList();
+            List<License> activeLicenses = licenseService.getActiveLicensesForDevice(device, user);
 
-            return ResponseEntity.ok(tickets);
+            License userLicense = activeLicenses.stream()
+            .filter(license -> license.getUser() != null && 
+                               license.getUser().getId().equals(user.getId()))
+            .findFirst()
+            .orElseThrow(() -> new LicenseNotFoundException("Активная лицензия не найдена"));
+
+            Ticket ticket = licenseService.generateTicket(
+                userLicense, 
+                device, 
+                "Информация о лицензии на текущее устройство"
+            );
+            return ResponseEntity.ok(ticket);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(String.format("Ошибка(%s)", e.getMessage()));
         }
