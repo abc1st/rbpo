@@ -37,8 +37,9 @@ public class LicenseUpdateController {
             if (!authenticationService.authenticate(user, licenseUpdateRequest.getPassword()))
                 throw new AuthenticationErrorException("Аутентификация не удалась");
 
+            String durationAdd = licenseUpdateRequest.getDurationAdd();
             // запрос на продление
-            List<Ticket> tickets = licenseService.licenseRenewal(licenseUpdateRequest.getCodeActivation(), user);
+            List<Ticket> tickets = licenseService.licenseRenewal(licenseUpdateRequest.getCodeActivation(), user, durationAdd);
 
             return ResponseEntity.ok(tickets);
         } catch (RuntimeException e) {
