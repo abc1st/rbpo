@@ -19,19 +19,12 @@ public class DeviceServiceImpl implements DeviceService {
     private final DeviceRepository deviceRepository;
     private final UserServiceImpl userServiceImpl;
 
-    private Device createDevice(String nameDevice, String macDevice, ApplicationUser user) {
-        Device device = new Device();
-        device.setName(nameDevice);
-        device.setMacAddress(macDevice);
-        device.setUser(user);
-        return deviceRepository.save(device);
-    }
+
 
     @Override
     public Device registerOrUpdateDevice(String nameDevice, String macDevice, ApplicationUser user) {
         Device device = deviceRepository.findByMacAddress(macDevice).orElse(null);
 
-        // новое устройство у пользователя
         if (device == null || !device.getUser().getId().equals(user.getId())) {
             device = new Device();
             device.setName(nameDevice);
