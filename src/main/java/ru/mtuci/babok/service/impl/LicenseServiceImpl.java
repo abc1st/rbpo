@@ -14,14 +14,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
 import java.text.SimpleDateFormat;
 
 import java.sql.Date;
-import java.text.Format;
-import java.text.SimpleDateFormat;
-import java.util.List;
-import java.util.Optional;
+import java.util.Base64;
 import java.util.stream.Collectors;
+
+
 
 @Service
 @RequiredArgsConstructor
@@ -79,11 +83,15 @@ public class LicenseServiceImpl implements LicenseService {
         license.setFirst_activation_date(null);
         license.setDuration(effectiveDuration);
 
+        //TODO: 1. Дата окончания должна считаться при первой активации
         // Расчет даты окончания
-        Date endDate = new Date(System.currentTimeMillis() + effectiveDuration * 1000);
-        license.setEnding_date(endDate);
+        // -Решение: перенос окончания лицензии в активацию лицензии,
+        // при активации будет установлена дата окончания
+        // + ставится дата окончания в момент создания лицензии для работы
 
-        // Генерация уникального кода лицензии с дополнительной защитой
+        //license.setEnding_date(new Date(System.currentTimeMillis()));
+
+        // Генерация уникального кода лицензии
         String code = generateSecureCodeLicense(productId, ownerId, licenseTypeId, device_count);
         license.setCode(code);
 
@@ -105,14 +113,31 @@ public class LicenseServiceImpl implements LicenseService {
         return license;
     }
 
+    //TODO: 2. Придумать новый алгоритм генерации кода
+    // Использование алгоритма SHA256 вместо BCryptPasswordEncoder
     private String generateSecureCodeLicense(Long productId, Long ownerId, Long licenseTypeId, Integer device_count) {
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        String rawCode = productId.toString() +
-                ownerId.toString() +
-                licenseTypeId.toString() +
-                device_count.toString() +
-                System.currentTimeMillis();
-        return encoder.encode(rawCode);
+        try {
+            String rawData = String.format(
+                    "%d|%d|%d|%d|%d|%s",
+                    productId,
+                    ownerId,
+                    licenseTypeId,
+                    device_count,
+                    System.currentTimeMillis(),
+                    UUID.randomUUID()
+            );
+
+            MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+
+            byte[] Hash = sha256.digest(rawData.getBytes(StandardCharsets.UTF_8));
+
+            return Base64.getUrlEncoder()
+                    .withoutPadding()
+                    .encodeToString(Hash);
+
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("Ошибка генерации кода лицензии", e);
+        }
     }
 
     private String buildLicenseDescription(License license) {
@@ -123,15 +148,12 @@ public class LicenseServiceImpl implements LicenseService {
                 "- Тип: %s"+
                 "- Владелец: %s" +
                 "- Количество устройств: %d" +
-                "- Создана: %s" +
-                "- Действует до: %s" + "- Длительность: %d сек",
+                "- Создана: %s",
                 license.getProduct().getName(),
                 license.getLicenseType().getName(),
                 license.getOwner().getLogin(),
                 license.getDevice_count(),
-                formatter.format(new Date(System.currentTimeMillis())),
-                formatter.format(license.getEnding_date()),
-                license.getDuration()
+                formatter.format(new Date(System.currentTimeMillis()))
         );
     }
 
@@ -156,10 +178,13 @@ public class LicenseServiceImpl implements LicenseService {
             throw new LicenseErrorActivationException(validationResult.getErrorMessage());
         }
 
-        // Первичная активация лицензии
+        //Перенесена дата окончания лицензии до момента активации
         if (license.getUser() == null) {
             license.setUser(user);
             license.setFirst_activation_date(new Date(System.currentTimeMillis()));
+            Date endDate = new Date(System.currentTimeMillis() + license.getDuration() * 1000);
+            license.setEnding_date(endDate);
+
         }
 
         // Обновление лицензии
@@ -188,8 +213,10 @@ public class LicenseServiceImpl implements LicenseService {
 
         // Проверка даты окончания лицензии
         Date currentDate = new Date(System.currentTimeMillis());
-        if (license.getEnding_date().before(currentDate)) {
-            return ValidationResult.invalid("Срок действия лицензии истек");
+        if (license.getEnding_date() != null){
+            if (license.getEnding_date().before(currentDate)) {
+                return ValidationResult.invalid("Срок действия лицензии истек");
+            }
         }
 
         // Проверка пользователя
@@ -239,6 +266,7 @@ public class LicenseServiceImpl implements LicenseService {
     private Date getCurrentSecureDate() {
         return new Date(System.currentTimeMillis());
     }
+
     @Override
     public void updateLicense(License license) {
         // Обновление даты первой активации, если еще не установлена
@@ -353,8 +381,22 @@ public class LicenseServiceImpl implements LicenseService {
         return ticket;
     }
 
+    private Long parseRenewalDuration(String duration, License license) {
+        try {
+            if (duration != null && !duration.isEmpty()) {
+                long days = Long.parseLong(duration);
+                return days * 24 * 60 * 60;
+            }
+            return license.getLicenseType().getDefault_duration();
+        } catch (NumberFormatException e) {
+            return license.getLicenseType().getDefault_duration();
+        }
+    }
+
+    //TODO: 4. Добавить число дней для подления
+    // Решение - добавлен новый параметр на количество секунн которые преобразуются в дни
     @Override
-    public List<Ticket> licenseRenewal(String activationCode, ApplicationUser user) {
+    public List<Ticket> licenseRenewal(String activationCode, ApplicationUser user, String duration) {
         // Получаем лицензию
         License license = licenseRepository.findByCode(activationCode)
                 .orElseThrow(() -> new LicenseNotFoundException("Ключ лицензии недействителен"));
@@ -364,7 +406,7 @@ public class LicenseServiceImpl implements LicenseService {
                 .map(deviceLicense -> generateTicket(license, deviceLicense.getDevice(), ""))
                 .collect(Collectors.toList());
 
-        // Расширенные проверки возможности продления
+        // Проверки возможности продления
         ValidationResult validationResult = validateLicenseRenewal(license, user);
 
         if (!validationResult.isValid()) {
@@ -382,7 +424,9 @@ public class LicenseServiceImpl implements LicenseService {
         }
 
         // Продление лицензии
-        extendLicense(license, user);
+        Long renewalDuration = parseRenewalDuration(duration, license);
+
+        extendLicense(license, user, renewalDuration);
 
         // Обновление билетов и история
         tickets.forEach(ticket -> {
@@ -436,10 +480,10 @@ public class LicenseServiceImpl implements LicenseService {
         return ValidationResult.valid();
     }
 
+
+
     // Метод продления лицензии
-    private void extendLicense(License license, ApplicationUser user) {
-        // Получаем стандартную длительность из типа лицензии
-        Long defaultDuration = license.getLicenseType().getDefault_duration();
+    private void extendLicense(License license, ApplicationUser user, Long defaultDuration) {
 
         // Расчет новой даты окончания
         Date currentDate = new Date(System.currentTimeMillis());
