@@ -8,6 +8,8 @@ import ru.mtuci.babok.model.ApplicationUser;
 import ru.mtuci.babok.model.Device;
 import ru.mtuci.babok.model.License;
 import ru.mtuci.babok.model.Ticket;
+import ru.mtuci.babok.repository.DeviceLicenseRepository;
+import ru.mtuci.babok.repository.LicenseRepository;
 import ru.mtuci.babok.request.DeviceInfoRequest;
 import ru.mtuci.babok.service.impl.DeviceServiceImpl;
 import ru.mtuci.babok.service.impl.LicenseServiceImpl;
@@ -26,6 +28,7 @@ public class LicenseInfoController {
     private final DeviceServiceImpl deviceService;
     private final JwtTokenProvider jwtTokenProvider;
     private final LicenseServiceImpl licenseService;
+    private final LicenseRepository licenseRepository;
 
     @PostMapping
     public ResponseEntity<?> getLicenseInfo(@RequestHeader("Authorization") String auth, @RequestBody DeviceInfoRequest deviceInfoRequest) {
@@ -33,27 +36,26 @@ public class LicenseInfoController {
             // Получить аутентифицированного пользователя
             String login = jwtTokenProvider.getUsername(auth.split(" ")[1]);
             ApplicationUser user = userService.getUserByLogin(login).orElseThrow(
-                    () -> new UserNotFoundException("User not found")
+                    () -> new UserNotFoundException("Пользователь не найден")
             );
 
-            // Получить устройство
             Device device = deviceService.findDeviceByInfo(deviceInfoRequest.getName(), deviceInfoRequest.getMacAddress(), user).orElseThrow(
                     () -> new DeviceNotFoundException("Устройство не найдено")
             );
 
-            List<License> activeLicenses = licenseService.getActiveLicensesForDevice(device, user);
+            License license = licenseRepository.findByCode(deviceInfoRequest.getActivationCode())
+                .orElseThrow(() -> new LicenseNotFoundException("Лицензия не найдена"));
 
-            License userLicense = activeLicenses.stream()
-            .filter(license -> license.getUser() != null && 
-                               license.getUser().getId().equals(user.getId()))
-            .findFirst()
-            .orElseThrow(() -> new LicenseNotFoundException("Активная лицензия не найдена"));
+            if (!license.getUser().getId().equals(user.getId())) {
+                throw new LicenseNotFoundException("Лицензия не принадлежит текущему пользователю");
+            }
 
             Ticket ticket = licenseService.generateTicket(
-                userLicense, 
+                license, 
                 device, 
-                "Информация о лицензии на текущее устройство"
+                "Информация о лицензии для текущего устройства"
             );
+
             return ResponseEntity.ok(ticket);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(String.format("Ошибка(%s)", e.getMessage()));
