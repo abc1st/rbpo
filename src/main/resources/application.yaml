@@ -12,4 +12,5 @@ spring:
 
 jwt:
   secret: BabokDenisMikhailovich1bib220630
-  expiration: 3600000
+  accessExpiration: 600000
+  refreshExpiration: 3600000
