@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.authentication.AuthenticationManager;
+import ru.mtuci.babok.repository.UserSessionRepository;
 
 @Configuration
 @EnableMethodSecurity
@@ -21,10 +22,11 @@ import org.springframework.security.authentication.AuthenticationManager;
 public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private UserSessionRepository userSessionRepository;
 
     @Bean
     public JwtTokenFilter jwtTokenFilter() {
-        return new JwtTokenFilter(jwtTokenProvider, userDetailsService);
+        return new JwtTokenFilter(jwtTokenProvider, userDetailsService, userSessionRepository);
     }
 
     @Bean
