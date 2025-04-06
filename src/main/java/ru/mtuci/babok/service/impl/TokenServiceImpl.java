@@ -26,9 +26,19 @@ public class TokenServiceImpl {
 
     @Transactional
     public UserSession issueTokenPair(ApplicationUser user, String deviceId) {
+        List<UserSession> activeSessions = userSessionRepository.findByEmailAndDeviceIdAndStatus(
+                user.getEmail(), deviceId, SessionStatus.ACTIVE
+        );
+
+        activeSessions.forEach(session -> {
+            session.setStatus(SessionStatus.REVOKED);
+            userSessionRepository.save(session);
+        });
+
         Set<GrantedAuthority> grantedAuthorities = user.getRole().getGrantedAuthorities();
         String accessToken = jwtTokenProvider.createAccessToken(user.getLogin(), grantedAuthorities);
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getLogin(), grantedAuthorities, deviceId);
+
         UserSession session = new UserSession();
         session.setEmail(user.getEmail());
         session.setDeviceId(deviceId);
