@@ -10,13 +10,18 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.mtuci.babok.model.SessionStatus;
+import ru.mtuci.babok.model.UserSession;
+import ru.mtuci.babok.repository.UserSessionRepository;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class JwtTokenFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+    private final UserSessionRepository userSessionRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,6 +39,14 @@ public class JwtTokenFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(auth);
+
+                Optional<UserSession> sessionOptional = userSessionRepository.findByAccessToken(token);
+                if(!sessionOptional.isPresent() || sessionOptional.get().getStatus() != SessionStatus.ACTIVE) {
+                    SecurityContextHolder.clearContext();
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Сессия недействительная");
+                    return;
+                }
+
             } else{
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Токен не является Access-токеном");
                 return;
