@@ -22,7 +22,7 @@ import ru.mtuci.babok.repository.UserSessionRepository;
 public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
-    private UserSessionRepository userSessionRepository;
+    private final UserSessionRepository userSessionRepository;
 
     @Bean
     public JwtTokenFilter jwtTokenFilter() {
