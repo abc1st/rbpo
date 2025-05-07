@@ -11,6 +11,7 @@ import ru.mtuci.babok.model.SignatureEntity;
 import ru.mtuci.babok.model.SignatureStatus;
 import ru.mtuci.babok.repository.SignatureAuditRepository;
 import ru.mtuci.babok.repository.SignatureRepository;
+import ru.mtuci.babok.service.SignatureVerificationService;
 import ru.mtuci.babok.service.impl.SignatureServiceImpl;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class SignatureVerificationServiceImpl {
+public class SignatureVerificationServiceImpl implements SignatureVerificationService {
     private static final Logger logger = LoggerFactory.getLogger(SignatureVerificationServiceImpl.class);
     private final SignatureRepository signatureRepository;
     private final SignatureServiceImpl signatureService;
