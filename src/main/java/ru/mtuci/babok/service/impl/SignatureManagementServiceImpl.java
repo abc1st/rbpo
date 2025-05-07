@@ -8,9 +8,16 @@ import ru.mtuci.babok.model.*;
 import ru.mtuci.babok.repository.SignatureAuditRepository;
 import ru.mtuci.babok.repository.SignatureHistoryRepository;
 import ru.mtuci.babok.repository.SignatureRepository;
+import ru.mtuci.babok.service.SignatureManagementService;
 import ru.mtuci.babok.service.impl.SignatureServiceImpl;
 
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SignatureException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -18,7 +25,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class SignatureManagementServiceImpl {
+public class SignatureManagementServiceImpl implements SignatureManagementService {
     private final SignatureRepository signatureRepository;
     private final SignatureHistoryRepository signatureHistoryRepository;
     private final SignatureAuditRepository signatureAuditRepository;
@@ -26,7 +33,7 @@ public class SignatureManagementServiceImpl {
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public SignatureEntity createSignature(SignatureEntity entity, String changedBy) throws Exception {
+    public SignatureEntity createSignature(SignatureEntity entity, String changedBy) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         SignatureEntity newEntity = new SignatureEntity();
         newEntity.setThreatName(entity.getThreatName());
         newEntity.setFirstBytes(entity.getFirstBytes());
@@ -51,7 +58,7 @@ public class SignatureManagementServiceImpl {
 
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
-    public SignatureEntity updateSignature(UUID id, SignatureEntity updatedEntity, String changedBy) throws Exception {
+    public SignatureEntity updateSignature(UUID id, SignatureEntity updatedEntity, String changedBy) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
         SignatureEntity existing = signatureRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Сигнатура не найдена"));
 
@@ -155,6 +162,31 @@ public class SignatureManagementServiceImpl {
         return signatureRepository.findByStatus(status);
     }
 
+    @Transactional(readOnly = true)
+    public List<SignatureAudit> getAllAuditRecords() {
+        return signatureAuditRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SignatureAudit> getAuditRecordsBySignatureId(UUID signatureId) {
+        return signatureAuditRepository.findBySignatureId(signatureId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SignatureAudit> getAuditRecordsByChangeType(String changeType) {
+        return signatureAuditRepository.findByChangeType(changeType);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SignatureAudit> getAuditRecordsByChangedBy(String changedBy) {
+        return signatureAuditRepository.findByChangedBy(changedBy);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SignatureAudit> getAuditRecordsByDateRange(LocalDateTime start, LocalDateTime end) {
+        return signatureAuditRepository.findByChangedAtBetween(start, end);
+    }
+
     private void saveHistory(SignatureEntity entity) {
         SignatureHistory history = new SignatureHistory();
         history.setSignatureId(entity.getId());
@@ -187,5 +219,32 @@ public class SignatureManagementServiceImpl {
             changedFields.append(", ");
         }
         changedFields.append(fieldName);
+    }
+
+    public byte[] serializeSignatureFields(SignatureEntity signature) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             DataOutputStream dos = new DataOutputStream(baos)) {
+            dos.writeUTF(signature.getThreatName());
+            dos.writeInt(signature.getFirstBytes().length);
+            dos.write(signature.getFirstBytes());
+            dos.writeUTF(signature.getRemainderHash());
+            dos.writeInt(signature.getRemainderLength());
+            dos.writeUTF(signature.getFileType());
+            dos.writeInt(signature.getOffsetStart());
+            dos.writeInt(signature.getOffsetEnd());
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public byte[] generateManifestSignature(int count, byte[] massiveSignature) throws IOException, NoSuchAlgorithmException, SignatureException, InvalidKeyException {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             DataOutputStream dos = new DataOutputStream(baos)) {
+            dos.writeInt(count);
+            dos.write(massiveSignature);
+            byte[] data = baos.toByteArray();
+            return signatureService.sign(data);
+        }
     }
 }
