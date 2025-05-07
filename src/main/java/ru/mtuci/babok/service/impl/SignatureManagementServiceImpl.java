@@ -12,6 +12,7 @@ import ru.mtuci.babok.service.impl.SignatureServiceImpl;
 
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -56,22 +57,67 @@ public class SignatureManagementServiceImpl {
 
         saveHistory(existing);
 
-        existing.setThreatName(updatedEntity.getThreatName());
-        existing.setFirstBytes(updatedEntity.getFirstBytes());
-        existing.setRemainderHash(updatedEntity.getRemainderHash());
-        existing.setRemainderLength(updatedEntity.getRemainderLength());
-        existing.setFileType(updatedEntity.getFileType());
-        existing.setOffsetStart(updatedEntity.getOffsetStart());
-        existing.setOffsetEnd(updatedEntity.getOffsetEnd());
-        existing.setUpdatedAt(LocalDateTime.now());
+        boolean isChanged = false;
+        StringBuilder changedFields = new StringBuilder();
 
-        byte[] dataToSign = signatureService.getDataToSign(existing);
-        byte[] signature = signatureService.sign(dataToSign);
-        existing.setDigitalSignature(signature);
+        if (updatedEntity.getThreatName() != null && !updatedEntity.getThreatName().equals(existing.getThreatName())) {
+            existing.setThreatName(updatedEntity.getThreatName());
+            addChangedField(changedFields, "threat_name");
+            isChanged = true;
+        }
 
-        SignatureEntity updated = signatureRepository.save(existing);
-        saveAudit(updated, "UPDATED", changedBy, "threat_name, first_bytes");
-        return updated;
+        if (updatedEntity.getOffsetStart() != null && !updatedEntity.getOffsetStart().equals(existing.getOffsetStart())) {
+            existing.setOffsetStart(updatedEntity.getOffsetStart());
+            addChangedField(changedFields, "offset_start");
+            isChanged = true;
+        }
+
+        if (updatedEntity.getOffsetEnd() != null && !updatedEntity.getOffsetEnd().equals(existing.getOffsetEnd())) {
+            existing.setOffsetEnd(updatedEntity.getOffsetEnd());
+            addChangedField(changedFields, "offset_end");
+            isChanged = true;
+        }
+
+
+        if (updatedEntity.getFileType() != null && !updatedEntity.getFileType().equals(existing.getFileType())) {
+            existing.setFileType(updatedEntity.getFileType());
+            addChangedField(changedFields, "file_type");
+            isChanged = true;
+        }
+
+        if (updatedEntity.getFirstBytes() != null && !Arrays.equals(updatedEntity.getFirstBytes(), existing.getFirstBytes())) {
+            existing.setFirstBytes(updatedEntity.getFirstBytes());
+            addChangedField(changedFields, "first_bytes");
+            isChanged = true;
+        }
+
+        if (updatedEntity.getRemainderHash() != null && !updatedEntity.equals(existing.getRemainderHash())) {
+            existing.setRemainderHash(updatedEntity.getRemainderHash());
+            addChangedField(changedFields, "remainder_hash");
+            isChanged = true;
+        }
+
+        if (updatedEntity.getRemainderLength() != null && !updatedEntity.getRemainderLength().equals(existing.getRemainderLength())) {
+            existing.setRemainderLength(updatedEntity.getRemainderLength());
+            addChangedField(changedFields, "remainder_length");
+            isChanged = true;
+        }
+
+        if (isChanged){
+            existing.setUpdatedAt(LocalDateTime.now());
+
+            byte[] dataToSign = signatureService.getDataToSign(existing);
+            byte [] signature = signatureService.sign(dataToSign);
+            existing.setDigitalSignature(signature);
+
+            SignatureEntity updated = signatureRepository.save(existing);
+            saveAudit(updated, "UPDATED", changedBy, changedFields.toString());
+            return updated;
+        }
+        else {
+           return existing;
+        }
+
     }
 
     @Transactional
@@ -134,5 +180,12 @@ public class SignatureManagementServiceImpl {
         audit.setChangedAt(LocalDateTime.now());
         audit.setFieldsChanged(fieldsChanged);
         signatureAuditRepository.save(audit);
+    }
+
+    private void addChangedField(StringBuilder changedFields, String fieldName) {
+        if (changedFields.length() > 0) {
+            changedFields.append(", ");
+        }
+        changedFields.append(fieldName);
     }
 }

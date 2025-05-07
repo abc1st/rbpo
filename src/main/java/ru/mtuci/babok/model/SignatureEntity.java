@@ -23,16 +23,16 @@ public class SignatureEntity {
     private String remainderHash;
 
     @Column(name = "remainder_length")
-    private int remainderLength;
+    private Integer remainderLength;
 
     @Column(name = "file_type")
     private String fileType;
 
     @Column(name = "offset_start")
-    private int offsetStart;
+    private Integer offsetStart;
 
     @Column(name = "offset_end")
-    private int offsetEnd;
+    private Integer offsetEnd;
 
     @Column(name = "digital_signature", columnDefinition = "BYTEA")
     private byte[] digitalSignature;
