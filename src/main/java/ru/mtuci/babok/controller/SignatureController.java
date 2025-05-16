@@ -2,8 +2,14 @@ package ru.mtuci.babok.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import ru.mtuci.babok.configuration.JwtTokenProvider;
 import ru.mtuci.babok.model.SignatureAudit;
@@ -116,8 +122,10 @@ public class SignatureController {
     }
 
 
-    @GetMapping("/download")
-    public void downloadSignatures(@RequestParam(required = false) String since, HttpServletResponse response) throws Exception {
+    @GetMapping(value = "/download", produces = MediaType.MULTIPART_MIXED_VALUE)
+    public ResponseEntity<MultiValueMap<String, Object>> downloadSignatures(
+            @RequestParam(required = false) String since) throws Exception {
+
         List<SignatureEntity> signatures;
         if (since != null) {
             LocalDateTime sinceDate = LocalDateTime.parse(since);
@@ -126,48 +134,64 @@ public class SignatureController {
             signatures = service.getAllActualSignatures();
         }
 
-        try (ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
-             ByteArrayOutputStream metaStream = new ByteArrayOutputStream()) {
+        ByteArrayOutputStream dataStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream metaStream = new ByteArrayOutputStream();
 
-            for (SignatureEntity signature : signatures) {
-                byte[] serialized = service.serializeSignatureFields(signature);
-                dataStream.write(serialized);
+        for (SignatureEntity signature : signatures) {
+            byte[] serialized = service.serializeSignatureFields(signature);
+            dataStream.write(serialized);
 
-                String idStr = signature.getId().toString();
-                byte[] digitalSig = signature.getDigitalSignature();
-                if (digitalSig == null) digitalSig = new byte[0];
+            String idStr = signature.getId().toString();
+            byte[] digitalSig = signature.getDigitalSignature();
+            if (digitalSig == null) digitalSig = new byte[0];
 
-                metaStream.write(idStr.getBytes(StandardCharsets.UTF_8));
-                metaStream.write(":".getBytes(StandardCharsets.UTF_8));
-                metaStream.write(digitalSig);
-                metaStream.write("\n".getBytes(StandardCharsets.UTF_8));
-            }
-
-            byte[] data = dataStream.toByteArray();
-            byte[] massiveSignature = metaStream.toByteArray();
-            byte[] countSignature = ByteBuffer.allocate(4).putInt(signatures.size()).array();
-            byte[] manifestSignature = service.generateManifestSignature(signatures.size(), massiveSignature);
-
-            try (ByteArrayOutputStream manifestStream = new ByteArrayOutputStream()) {
-                manifestStream.write(countSignature);
-                manifestStream.write(massiveSignature);
-                manifestStream.write(manifestSignature);
-                byte[] manifest = manifestStream.toByteArray();
-
-                response.setContentType("multipart/mixed; boundary=boundary");
-                try (OutputStream os = response.getOutputStream()) {
-                    os.write(("--boundary\r\n").getBytes());
-                    os.write(("Content-Disposition: attachment; filename=\"manifest.bin\"\r\n").getBytes());
-                    os.write(("Content-Type: application/octet-stream\r\n\r\n").getBytes());
-                    os.write(manifest);
-                    os.write(("\r\n--boundary\r\n").getBytes());
-                    os.write(("Content-Disposition: attachment; filename=\"data.bin\"\r\n").getBytes());
-                    os.write(("Content-Type: application/octet-stream\r\n\r\n").getBytes());
-                    os.write(data);
-                    os.write(("\r\n--boundary--\r\n").getBytes());
-                }
-            }
+            metaStream.write(idStr.getBytes(StandardCharsets.UTF_8));
+            metaStream.write(":".getBytes(StandardCharsets.UTF_8));
+            metaStream.write(digitalSig);
         }
+
+        byte[] data = dataStream.toByteArray();
+        byte[] massiveSignature = metaStream.toByteArray();
+        byte[] countSignature = ByteBuffer.allocate(4).putInt(signatures.size()).array();
+        byte[] manifestSignature = service.generateManifestSignature(signatures.size(), massiveSignature);
+
+        ByteArrayOutputStream manifestStream = new ByteArrayOutputStream();
+        manifestStream.write(countSignature);
+        manifestStream.write(massiveSignature);
+        manifestStream.write(manifestSignature);
+        byte[] manifest = manifestStream.toByteArray();
+        return buildMultipartResponse(manifest, data);
+    }
+
+    private ResponseEntity<MultiValueMap<String, Object>> buildMultipartResponse(byte[] manifest, byte[] data) {
+        ByteArrayResource manifestRes = new ByteArrayResource(manifest) {
+            @Override
+            public String getFilename() {
+                return "manifest.bin";
+            }
+        };
+
+        ByteArrayResource dataRes = new ByteArrayResource(data) {
+            @Override
+            public String getFilename() {
+                return "data.bin";
+            }
+        };
+
+        LinkedMultiValueMap<String, Object> parts = new LinkedMultiValueMap<>();
+        parts.add("manifest", new HttpEntity<>(manifestRes, createHeaders("manifest.bin")));
+        parts.add("data", new HttpEntity<>(dataRes, createHeaders("data.bin")));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(MediaType.MULTIPART_MIXED_VALUE))
+                .body(parts);
+    }
+
+    private HttpHeaders createHeaders(String filename) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDispositionFormData("attachment", filename);
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        return headers;
     }
 
 }

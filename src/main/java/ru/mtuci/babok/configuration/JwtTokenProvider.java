@@ -49,6 +49,7 @@ public class JwtTokenProvider {
 
     public String createToken(String username, Set<GrantedAuthority> authorities, long expirationMillis, String tokenType, String deviceId ){
         Claims claims = Jwts.claims().setSubject(username);
+
         claims.put("auth", authorities.stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList())
